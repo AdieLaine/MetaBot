@@ -11,26 +11,48 @@ MetaBot offers an interactive and user-friendly interface. Users can interact wi
 
 ## Features
 
-- **Dynamic Model Selection**: MetaBot intelligently selects the most suitable AI model for each task. Whether it's a coding-related question or a request for a creative story, MetaBot picks the best model for the job.
+- **Dynamic Model Selection**: MetaBot intelligently selects the most suitable AI model for each task. It uses the GZIP compression algorithm to calculate Normalized Compression Distance (NCD) between the user's input and the conversation history, which helps in predicting the most appropriate class for the input and hence the most suitable model. Whether it's a coding-related question or a request for a creative story, MetaBot picks the best model for the job, thanks to GZIP.
 
 - **Interactive User Interface**: Powered by Streamlit, MetaBot provides an interactive chat interface where users can input their prompts and receive responses from the AI.
 
 - **Realistic Typing Effect**: To enhance the chatting experience, MetaBot simulates a realistic typing effect when generating responses.
 
-- **Adaptable Roleplay**: Depending on the task, MetaBot can take on various roles, such as a coding assistant, a storyteller, or a general helper, to provide contextually appropriate responses.
+- **Adaptable Assistant Roles**: Leveraging GZIP for model selection, MetaBot can take on various roles, such as a coding assistant, a storyteller, or a general helper, to provide contextually appropriate responses. This is made possible by measuring the similarity between the user's input and different classes, such as 'code', 'essay', 'story', etc.
 
 - **Customizable Assistant Avatar**: MetaBot's assistant avatar dynamically updates based on the selected model, providing a visual representation of the model in use.
 
+### Use of GZIP
+
+MetaBot uses GZIP as part of its core logic to improve model selection and contextual appropriateness of the assistant roles. The GZIP logic is used to compress the strings of text that form the training data for the MetaBot. This is performed in the `create_compressor` function which takes in a compression method (in this case 'gzip') and returns a corresponding compressor object. The compressor object has a `compress` method that takes a string and returns a compressed string, and a `decompress` method...
+
+The use of GZIP allows the training data to be stored and transferred more efficiently, as the compressed strings take up less space than the original strings. Moreover, it enables the calculation of Normalized Compression Distance (NCD), a measure used to predict the most appropriate class for a user's input, thereby enhancing the chatbot's ability to provide relevant and accurate responses.
+
+```python
+import zlib
+
+def create_compressor(compression):
+    if compression == 'gzip':
+        return zlib.compressobj(9, zlib.DEFLATED, zlib.MAX_WBITS | 16)
+    elif compression == 'zlib':
+        return zlib.compressobj(9, zlib.DEFLATED, zlib.MAX_WBITS)
+    else:
+        raise ValueError(f"Unsupported compression method: {compression}")
+
+compressor = create_compressor('gzip')
+compressed_data = compressor.compress(training_data)
+decompressed_data = compressor.decompress(compressed_data)
+```
+
 - **Model Information**: MetaBot displays the model information, including the model name, description, and the number of parameters, to provide users with a better understanding of the model.
 
-- **Fine Tuned Models**: MetaBot is logically ready to used fine-tuned models for use-case specific tasks. For example, a fine-tuned model for language translation can be used for language learning related tasks.
+- **Fine Tuned Models**: MetaBot is logically ready to use fine-tuned models for use-case specific tasks. For example, a fine-tuned model for language translation can be used for language learning related tasks.
 
 
 ## Meta Model Sliding: A Proof of Concept for Dynamic Model Selection
 
 In an era where artificial intelligence is rapidly advancing, there is an abundance of AI models, each with its unique strengths and specializations. Leveraging these strengths for specific tasks can significantly enhance performance. However, the challenge lies in switching seamlessly between these models, ensuring that each task is handled by the most competent model.
 
-To overcome this challenge, we introduce the concept of "Model Sliding". This proof-of-concept technique demonstrates a novel approach toward logical model selection, capitalizing on the strengths of each model for optimal responses and use of tokens.
+To overcome this challenge, we introduce the concept of "Model Sliding". This proof-of-concept technique demonstrates a novel approach toward logical model selection, capitalizing on the strengths of each model for optimal responses and use of tokens. GZIP plays a crucial role in this process, enhancing the performance and scalability of our chatbot.
 
 
 ## Model Sliding: An Overview

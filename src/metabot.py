@@ -3,6 +3,9 @@ import streamlit as st
 import time
 from datetime import datetime
 import pandas as pd
+import gzip
+import statistics
+from typing import List
 
 # Set OpenAI API key
 openai.api_key = "set-your-api-key-here"
@@ -48,6 +51,136 @@ def part_of_day(hour):
         else
         "evening"
     )
+
+def create_compressor(compressor='gzip'):
+    """
+    Initialises and returns gzip compression. The return compressor is used to compress and calculate the size of 
+    the text for Normalized Compression Distance. gzip is used to compress the text.
+
+    Args:
+        compressor (str): the name of the compressor to be created which is 'gzip' by default.
+
+    Returns:
+        compressor (gzip): the gzip compressor.
+        
+    Raises:
+        RuntimeError: if a compressor other than gzip is requested.
+    """
+    if compressor != 'gzip':
+        raise RuntimeError("Unsupported compressor")
+    print("Using gzip compression.")
+    return gzip
+
+def compress_text(compressor, text):
+    """
+    Compress the given text using the gzip compression created using 'create_compressor()'. 
+    The function prints the length of the original text and the length of the compressed text.
+
+    Args:
+        compressor (gzip): gzip compressor.
+        text (str): the text to be compressed.
+
+    Returns:
+        compressed (gzip): the compressed text.
+    """
+    compressed = compressor.compress(text.encode("utf-8"))
+    print(f"Original size of '{text}' is {len(text)}")
+    print(f"Compressed size of '{text}' is {len(compressed)}")
+    return compressed
+
+
+def compute_distance(text_1: str, text_2: str, compressor):
+    """
+    Compute the Normalized Compression Distance between two texts. Compute the normalized distance by minizinc the size of 
+    compressed two texts and the compressed individual texts.
+
+    Args:
+        text_1 (str): the first text.
+        text_2 (str): the second text.
+        compressor (gzip): gzip compressor.
+
+    Returns:
+        normalized_distance (float): the computed normalized distance between text1 and text2.
+    """
+    combined = f"{text_1} {text_2}"
+    compressed_size_combined = len(compress_text(compressor, combined))
+    compressed_size_1 = len(compress_text(compressor, text_1))
+    compressed_size_2 = len(compress_text(compressor, text_2))
+    normalized_distance = (
+        compressed_size_combined - min(compressed_size_1, compressed_size_2)
+    ) / max(compressed_size_1, compressed_size_2)
+    print(f"Normalized distance between '{text_1}' and '{text_2}' is {normalized_distance}")
+    return normalized_distance
+
+def predict_class(test_entry: str, training_data: List[str], training_labels: List[str], n_neighbors: int, compressor) -> str:
+    """
+    Predict the class of the input text based on the trained data.
+
+    Args:
+        test_entry (str): the input text.
+        training_data (List[str]): the training data.
+        training_labels (List[str]): the labels for the training data.
+        n_neighbors (int): the number of nearest neighbors.
+        compressor (gzip): gzip compressor.
+
+    Returns:
+        result (str): the predicted class.
+    """
+    distance_from_training = [
+        compute_distance(test_entry, train_entry, compressor)
+        for train_entry in training_data
+    ]
+    sorted_indices = sorted(
+        range(len(distance_from_training)),
+        key=lambda i: distance_from_training[i],
+    )
+    top_n_class = [
+        training_labels[i] for i in sorted_indices[: n_neighbors]
+    ]
+    return statistics.mode(top_n_class)
+
+def predict(X: List[str], training_data: List[str], training_labels: List[str], n_neighbors: int, compressor) -> List[str]:
+    """
+    Predict the classes for multiple texts.
+
+    Args:
+        X (List[str]): the input texts.
+        training_data (List[str]): the training data.
+        training_labels (List[str]): the labels for the training data.
+        n_neighbors (int): the number of nearest neighbors.
+        compressor (gzip): gzip compressor.
+
+    Returns:
+        result (List[str]): the predicted classes.
+    """
+    return [predict_class(test_entry, training_data, training_labels, n_neighbors, compressor) for test_entry in X]
+
+
+# List for training data and labels
+training_data = [
+    "Write me a python script",
+    "Help me with my English essay",
+    "Tell me a fantasy story",
+    "Create a social media post",
+    "Find information on AI",
+    "Help with sales strategy",
+    "Need advice on learning"
+]
+training_labels = ["code", "essay", "story", "social media", "research", "sales", "advice"]
+
+# Incorporate these functions into the generate_response function
+def generate_response(user_input):
+    """
+    Generate a response by predicting the class of the input text using the trained data.
+
+    Args:
+        user_input (str): the input text from the user
+
+    Returns:
+        response (str): the generated response.
+    """
+    response = predict([user_input], training_data, training_labels, n_neighbors=10, compressor=create_compressor('gzip'))[0]
+    return response
 
 @st.cache_data
 def meta_model(prompt, model_roles):
@@ -242,4 +375,4 @@ if prompt := st.chat_input("Enter your prompt or 'helpme' or '!' for commands.")
             # For demonstration purposes, we print the model explanation
             st.info(model_explanations[model])
         st.session_state.messages.append(add_message("assistant", full_response))
-#lluigneg
+#samqwan
